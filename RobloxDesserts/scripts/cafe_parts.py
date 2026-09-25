@@ -6,6 +6,7 @@ import dessert_lib as L
 import bpy  # noqa: F401  (must be imported before bmesh)
 import bmesh
 import numpy as np
+from mathutils import Vector
 
 # ------------------------------------------------------------- 2D outlines
 
@@ -267,3 +268,33 @@ def strawberry_half(skin, cut, HALF_R=0.16):
             loop[uv].uv = ((co.x - min(xs)) / (max(xs) - min(xs)), (co.z - min(zs)) / (max(zs) - min(zs)))
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     return obj_from_bm_multi("StrawberryHalf", bm, [skin, cut])
+
+
+def tube(name, path, radii, mat, ring_n=10, closed=False, caps=False):
+    """Sweep a circle along a polyline. Open ends are buried in other geometry;
+    closed=True joins the last ring back to the first (seamless loop)."""
+    bm = bmesh.new()
+    rings = []
+    pts = [Vector(p) for p in path]
+    for i, p in enumerate(pts):
+        if closed:
+            tan = (pts[(i + 1) % len(pts)] - pts[i - 1]).normalized()
+        else:
+            tan = (pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized()
+        # All tubes here lie in vertical XZ planes: a fixed Y reference never flips.
+        ref = Vector((0, 1, 0)) if abs(tan.y) < 0.9 else Vector((1, 0, 0))
+        nx = tan.cross(ref).normalized()
+        ny = tan.cross(nx).normalized()
+        r = radii[i]
+        rings.append([bm.verts.new(p + (nx * math.cos(a) + ny * math.sin(a)) * r)
+                      for a in (2 * math.pi * j / ring_n for j in range(ring_n))])
+    pairs = list(zip(rings, rings[1:])) + ([(rings[-1], rings[0])] if closed else [])
+    for a, b in pairs:
+        for j in range(ring_n):
+            k = (j + 1) % ring_n
+            bm.faces.new((a[j], a[k], b[k], b[j]))
+    if caps and not closed:                      # close visible ends (e.g. a spoon handle tip)
+        bm.faces.new(rings[0])
+        bm.faces.new(rings[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return L.obj_from_bm(name, bm, mat)

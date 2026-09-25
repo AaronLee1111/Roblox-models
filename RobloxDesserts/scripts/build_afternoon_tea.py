@@ -76,33 +76,6 @@ def lathe_multi(name, profile, mats, pick, segments=SEG):
     return obj
 
 
-def tube(name, path, radii, mat, ring_n=10, closed=False):
-    """Sweep a circle along a polyline. Open ends are buried in other geometry;
-    closed=True joins the last ring back to the first (seamless loop)."""
-    bm = bmesh.new()
-    rings = []
-    pts = [Vector(p) for p in path]
-    for i, p in enumerate(pts):
-        if closed:
-            tan = (pts[(i + 1) % len(pts)] - pts[i - 1]).normalized()
-        else:
-            tan = (pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized()
-        # All tubes here lie in vertical XZ planes: a fixed Y reference never flips.
-        ref = Vector((0, 1, 0)) if abs(tan.y) < 0.9 else Vector((1, 0, 0))
-        nx = tan.cross(ref).normalized()
-        ny = tan.cross(nx).normalized()
-        r = radii[i]
-        rings.append([bm.verts.new(p + (nx * math.cos(a) + ny * math.sin(a)) * r)
-                      for a in (2 * math.pi * j / ring_n for j in range(ring_n))])
-    pairs = list(zip(rings, rings[1:])) + ([(rings[-1], rings[0])] if closed else [])
-    for a, b in pairs:
-        for j in range(ring_n):
-            k = (j + 1) % ring_n
-            bm.faces.new((a[j], a[k], b[k], b[j]))
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    return L.obj_from_bm(name, bm, mat)
-
-
 def plate_profile(R, t=0.05):
     return [(0.0, 0.0), (R * 0.5, 0.0), (R * 0.56, 0.012), (R * 0.9, 0.03), (R, 0.075),
             (R - 0.025, 0.088), (R * 0.88, 0.055), (R * 0.56, t), (0.0, t)]
@@ -134,7 +107,7 @@ def build_stand(porcelain, gold):
     # Ring finial.
     ring = [Vector((0.1 * math.cos(a), 0.0, POLE_TOP + 0.1 + 0.1 * math.sin(a)))
             for a in np.linspace(-math.pi / 2, 1.5 * math.pi, 20, endpoint=False)]
-    parts.append(tube("Finial", ring, [0.026] * len(ring), gold, ring_n=8, closed=True))
+    parts.append(P.tube("Finial", ring, [0.026] * len(ring), gold, ring_n=8, closed=True))
     return parts
 
 
@@ -194,11 +167,11 @@ def build_teapot(ceramic, gold):
     knob.location.z = 0.56
     parts.append(knob)
     spout = [(0.24, 0, 0.14), (0.34, 0, 0.18), (0.42, 0, 0.26), (0.47, 0, 0.35), (0.52, 0, 0.42)]
-    parts.append(tube("Spout", spout, [0.075, 0.065, 0.055, 0.047, 0.042], ceramic))
+    parts.append(P.tube("Spout", spout, [0.075, 0.065, 0.055, 0.047, 0.042], ceramic))
     handle = [Vector((-0.27 - 0.17 * math.cos(a), 0.0, 0.25 + 0.14 * math.sin(a)))
               for a in np.linspace(-math.pi / 2, math.pi / 2, 11)]
     handle = [Vector((-0.27, 0, 0.11))] + handle + [Vector((-0.27, 0, 0.39))]
-    parts.append(tube("TeapotHandle", handle, [0.04] * len(handle), ceramic))
+    parts.append(P.tube("TeapotHandle", handle, [0.04] * len(handle), ceramic))
     return parts
 
 
@@ -217,7 +190,7 @@ def build_teacup(porcelain, ceramic, gold, tea):
     parts.append(surf)
     h = [Vector((0.175 + 0.07 * math.cos(a), 0.0, 0.16 + 0.05 * math.sin(a)))
          for a in np.linspace(-math.pi / 2, math.pi / 2, 9)]
-    parts.append(tube("CupHandle", h, [0.022] * len(h), porcelain, ring_n=8))
+    parts.append(P.tube("CupHandle", h, [0.022] * len(h), porcelain, ring_n=8))
     return parts
 
 
