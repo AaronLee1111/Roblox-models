@@ -122,6 +122,23 @@ def crescent_outline(R, c=0.35, steps=18):
     return P.chaikin(pts, 2)
 
 
+def crescent(name, mat, R=0.3, width=0.3, flat=0.55, steps=22, ring_n=12):
+    """Puffy crescent moon: a tube swept along an arc whose radius tapers to
+    soft points at both tips. Lies in the XY plane opening toward +X; `flat`
+    squashes its depth (Z). No concave caps, so it never self-intersects."""
+    t0 = math.radians(48)
+    rc = R * (1 - width / 2)                          # centre-line radius
+    path, radii = [], []
+    for t in np.linspace(0, 1, steps):
+        a = t0 + (2 * math.pi - 2 * t0) * t
+        path.append((rc * math.cos(a) - R * 0.12, rc * math.sin(a), 0.0))
+        radii.append(R * width / 2 * max(math.sin(math.pi * t), 0.0) ** 0.6 + R * 0.015)
+    obj = P.tube(name, path, radii, mat, ring_n=ring_n, caps=True)
+    for v in obj.data.vertices:
+        v.co.z *= flat
+    return obj
+
+
 def gem(name, mat, r=0.06):
     """Chunky faceted gem (octagonal brilliant-ish): reads as a jewel, not glass."""
     bm = bmesh.new()
@@ -142,7 +159,7 @@ def gem(name, mat, r=0.06):
 
 
 def gem_texture(out_dir, name, hex_color):
-    """Jewel tone with a painted facet glint (top-left quarter lighter)."""
+    """Flat jewel tone."""
     rgb = np.ones((8, 8, 3)) * np.array(L.srgb(hex_color))
     return L.image_from_array(name, rgb, out_dir)
 
