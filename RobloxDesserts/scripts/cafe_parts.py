@@ -221,3 +221,49 @@ def move(parts, dx=0.0, dy=0.0, dz=0.0, rot_z=0.0, tilt=(0.0, 0.0)):
     for p in parts:
         p.matrix_world = m @ p.matrix_world
     return parts
+
+
+def cut_texture(out_dir):
+    """Strawberry cross-section: white heart core, pale-pink flesh, red rim."""
+    n = 128
+    a = (np.arange(n) + 0.5) / n * 2 - 1
+    X, Z = np.meshgrid(a, a)
+    r = np.hypot(X / 0.95, Z)
+    rgb = np.broadcast_to(np.array(L.srgb("#f0385a")), (n, n, 3)).copy()
+    rgb[r < 0.78] = L.srgb("#ff9fb2")
+    core = (X / 0.22) ** 2 + ((Z - 0.1) / 0.5) ** 2 < 1
+    rgb[core] = L.srgb("#ffe3e8")
+    return L.image_from_array("StrawberryCut_Color", rgb, out_dir)
+
+
+def strawberry_half(skin, cut, HALF_R=0.16):
+    """Berry shape (tip up), halved along Y; the cut face (+Y) gets the cut material."""
+    bm = L.uvsphere_bm(u=16, v=10, radius=HALF_R)
+    for vert in bm.verts:
+        co = vert.co
+        t = min(1.0, max(0.0, (co.z / HALF_R + 1) / 2))
+        radial = 0.35 + 0.65 * t ** 0.45
+        co.x *= radial
+        co.y *= radial
+        co.z *= 1.2
+        if co.z > HALF_R:
+            co.z = HALF_R + (co.z - HALF_R) * 0.6
+        co.z = -co.z                                  # tip up
+    bmesh.ops.reverse_faces(bm, faces=bm.faces)       # mirroring flipped the winding
+    geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+    res = bmesh.ops.bisect_plane(bm, geom=geom, plane_co=(0, 0, 0), plane_no=(0, 1, 0),
+                                 clear_outer=True)
+    cut_edges = [e for e in res["geom_cut"] if isinstance(e, bmesh.types.BMEdge)]
+    new = bmesh.ops.holes_fill(bm, edges=cut_edges, sides=0)["faces"]
+    bmesh.ops.triangulate(bm, faces=new)
+    uv = bm.loops.layers.uv.verify()
+    cap = [f for f in bm.faces if f.normal.y > 0.9]
+    xs = [v.co.x for f in cap for v in f.verts]
+    zs = [v.co.z for f in cap for v in f.verts]
+    for f in cap:
+        f.material_index = 1
+        for loop in f.loops:
+            co = loop.vert.co
+            loop[uv].uv = ((co.x - min(xs)) / (max(xs) - min(xs)), (co.z - min(zs)) / (max(zs) - min(zs)))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return obj_from_bm_multi("StrawberryHalf", bm, [skin, cut])
