@@ -1,6 +1,6 @@
-"""Croffle: croissant dough pressed in a waffle iron. Chunky, slightly curved,
+"""Croffle: croissant dough pressed in a waffle iron. Chunky crescent with tapered horns,
 golden-brown with real waffle ridges, layered croissant edges, powdered sugar,
-a cream dollop and blueberries. Stylized Roblox look.
+a cream dollop and blueberries, on the café plate. Stylized Roblox look.
 
 The body is one closed surface built on a grid aligned to the waffle pockets,
 so ridges are real geometry without a dense mesh."""
@@ -23,6 +23,9 @@ CELL = [0.0, 0.14, 0.3, 0.7, 0.86]   # grid lines inside each pocket cell
 SQ = 4.0                   # superellipse exponent of the outline (rounded rectangle)
 BEND = 0.16                # crescent bend (studs at the tips)
 ARCH = 0.05                # ends droop by this much
+TAPER = 0.45               # croissant taper toward the horn tips (0 = plain rounded rectangle)
+HORN = 0.35                # how much thinner the tips get
+BODY_NAME = "Croffle"
 
 
 def pocket_frac(p):
@@ -57,10 +60,10 @@ def place(u, v, side):
     """Param (u, v) on top (+1) or bottom (-1) surface -> 3D point."""
     uu, vv, m = superellipse_map(u, v)
     x = uu * LEN / 2
-    y = vv * WID / 2 * (1 - 0.45 * uu ** 4)          # croissant taper toward the horn tips
+    y = vv * WID / 2 * (1 - TAPER * uu ** 4)         # croissant taper toward the horn tips
     rim = (1 - min(m, 1.0) ** 6) ** 0.35
     dome = 0.05 * (1 - m ** 2)
-    horn = 1 - 0.35 * uu ** 4                        # tips are thinner too
+    horn = 1 - HORN * uu ** 4                        # tips are thinner too
     z = side * (HALF_T * horn * rim + dome * (1 if side > 0 else 0.4))
     pocket = float(min(pocket_frac(local(u, NX)), pocket_frac(local(v, NY))))
     z -= side * DEPTH * pocket * (1 - m ** 8) * (1.0 if side > 0 else 0.6)
@@ -69,28 +72,55 @@ def place(u, v, side):
     return (x, y, z), m
 
 
-def waffle_texture(out_dir):
+def waffle_texture(out_dir, name="Croffle_Color", sugar_dots=170, ridge_hex="#b8692b", floor_hex="#ebb05c",
+                   fill=None, drizzle=None):
+    """fill(ix, iy) -> hex or None: colours the floor of individual pockets
+    (syrup / sauce pooled in the waffle holes).
+    drizzle = (hex, width, [(u, v), ...]): a sauce line painted over the top in
+    param space (u, v in [-1, 1]), so it hugs every ridge and pocket."""
     n = 512
     a = (np.arange(n) + 0.5) / n
     A, B = np.meshgrid(a, a)                          # A -> u, B -> v (rows = v)
     fx = pocket_frac((A * NX) % 1.0)
     fy = pocket_frac((B * NY) % 1.0)
     pocket = np.minimum(fx, fy)[..., None]
-    ridge = np.array(L.srgb("#b8692b"))
-    floor = np.array(L.srgb("#ebb05c"))
+    ridge = np.array(L.srgb(ridge_hex))
+    floor = np.array(L.srgb(floor_hex))
     rgb = ridge + (floor - ridge) * pocket
+    if fill:
+        ix = np.minimum((A * NX).astype(int), NX - 1)
+        iy = np.minimum((B * NY).astype(int), NY - 1)
+        deep = np.minimum(pocket_frac((A * NX) % 1.0 * 0.8 + 0.1), pocket_frac((B * NY) % 1.0 * 0.8 + 0.1)) > 0.99
+        for i in range(NX):
+            for j in range(NY):
+                c = fill(i, j)
+                if c:
+                    rgb[(ix == i) & (iy == j) & deep] = L.srgb(c)
+                    # Painted glint so pooled syrup reads as glossy liquid, not a hole.
+                    lx, ly = (A * NX) % 1.0, (B * NY) % 1.0
+                    glint = (ix == i) & (iy == j) & (np.hypot((lx - 0.36) / 0.09, (ly - 0.64) / 0.05) < 1)
+                    rgb[glint] = rgb[glint] * 0.3 + 0.7
     # Bold powdered-sugar dusting in a diagonal band.
     rng = np.random.default_rng(5)
     sugar = np.zeros((n, n))
     yy, xx = np.mgrid[0:n, 0:n]
     # Dusting: many small-to-medium dots, densest on the side away from the cream.
-    for _ in range(170):
+    for _ in range(sugar_dots):
         cx = rng.uniform(0.05, 0.62) * n
         cy = rng.uniform(0.1, 0.9) * n
         rad = rng.uniform(4, 9)
         sugar = np.maximum(sugar, np.clip((rad - np.hypot(xx - cx, yy - cy)) / 1.5, 0, 1))
     rgb = rgb + (np.array(L.srgb("#fffaf3")) - rgb) * (sugar * 0.9)[..., None]
-    return L.image_from_array("Croffle_Color", rgb, out_dir)
+    if drizzle:
+        hexc, width, pts = drizzle
+        pts = [((u + 1) / 2, (v + 1) / 2) for u, v in P.chaikin(pts, 3, closed=False)]
+        d = np.full(A.shape, 9.0)
+        for (u0, v0), (u1, v1) in zip(pts, pts[1:]):
+            ex, ey = u1 - u0, v1 - v0
+            t = np.clip(((A - u0) * ex + (B - v0) * ey) / (ex * ex + ey * ey + 1e-12), 0, 1)
+            d = np.minimum(d, np.hypot(A - u0 - t * ex, B - v0 - t * ey))
+        rgb[d < width] = L.srgb(hexc)
+    return L.image_from_array(name, rgb, out_dir)
 
 
 def edge_texture(out_dir):
@@ -146,18 +176,24 @@ def build_body(top_mat, edge_mat):
                     else:
                         loop[uv].uv = param[loop.vert]
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    return P.obj_from_bm_multi("Croffle", bm, [top_mat, edge_mat])
+    return P.obj_from_bm_multi(BODY_NAME, bm, [top_mat, edge_mat])
 
 
 def build(out_dir):
-    top_mat = L.make_material("CroffleWaffle", waffle_texture(out_dir), roughness=0.7, specular=0.25)
+    # Refined croissant silhouette: stronger taper to pointed horns and a deeper curve.
+    global TAPER, HORN, BEND, ARCH
+    TAPER, HORN, BEND, ARCH = 0.78, 0.6, 0.3, 0.06
+    top_mat = L.make_material("CroffleWaffle", waffle_texture(out_dir, sugar_dots=110), roughness=0.7,
+                              specular=0.25)
     edge_mat = L.make_material("CroffleLayers", edge_texture(out_dir), roughness=0.75, specular=0.2)
     cream = L.make_material("Cream", L.solid_image("Cream_Color", "#fff8ef", out_dir),
                             roughness=0.7, specular=0.25)
     blue = L.make_material("Blueberry", L.solid_image("Blueberry_Color", "#6f78d8", out_dir),
                            roughness=0.5, specular=0.3)
+    plate = L.make_material("Plate", L.solid_image("Plate_Color", "#fff3dd", out_dir), roughness=0.5, specular=0.3)
 
-    parts = [build_body(top_mat, edge_mat)]
+    body = build_body(top_mat, edge_mat)
+    parts = [body]
     ux = 0.45
     (x, y, z), _ = place(ux, 0.0, +1)
     d = P.cream_dollop("Cream", cream, radius=0.18, height=0.25)
@@ -171,7 +207,10 @@ def build(out_dir):
         b = L.obj_from_bm("Blueberry", bb, blue)
         b.location = (bx, by, bz + 0.045)
         parts.append(b)
-    return parts
+    # Present it on the waffle/pancake family's café plate, centred.
+    import build_souffle_pancakes as S
+    P.move(parts, dy=-BEND * 0.5, dz=S.PLATE_TOP + HALF_T * 0.85 + ARCH)
+    return [S.build_plate(plate)] + parts
 
 
 if __name__ == "__main__":
