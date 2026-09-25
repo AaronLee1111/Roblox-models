@@ -1,4 +1,5 @@
-"""Taiyaki: puffy, golden fish-shaped pastry lying on its side.
+"""Taiyaki: puffy, golden fish-shaped pastry lying on its side (stylized Roblox pass:
+chunkier body, bold grooves, flat baked colours).
 
 The body is lofted from cross-section rings along the fish's length (X), with
 the side profile in Y and the puffy thickness in Z (up). The waffle / scale
@@ -22,13 +23,18 @@ TEX = 512
 
 # Side profile control points: s (0 = nose, 1 = tail tip) -> upper / lower edge (studs).
 TOP = [(0, 0.0), (0.02, 0.16), (0.08, 0.30), (0.18, 0.40), (0.32, 0.44), (0.42, 0.47),
-       (0.52, 0.45), (0.62, 0.32), (0.72, 0.17), (0.78, 0.16), (0.88, 0.30), (0.96, 0.40), (1.0, 0.42)]
+       (0.52, 0.45), (0.62, 0.32), (0.72, 0.17), (0.78, 0.16), (0.88, 0.30), (0.96, 0.37), (1.0, 0.38)]
 BOT = [(0, 0.0), (0.02, 0.15), (0.08, 0.28), (0.18, 0.37), (0.32, 0.40), (0.46, 0.40),
-       (0.56, 0.37), (0.64, 0.28), (0.72, 0.17), (0.78, 0.16), (0.88, 0.30), (0.96, 0.40), (1.0, 0.42)]
+       (0.56, 0.37), (0.64, 0.28), (0.72, 0.17), (0.78, 0.16), (0.88, 0.30), (0.96, 0.37), (1.0, 0.38)]
 # Half thickness: puffy body, thinner tail.
 THICK = [(0, 0.0), (0.03, 0.10), (0.12, 0.16), (0.35, 0.18), (0.58, 0.15), (0.72, 0.10),
          (0.85, 0.085), (0.96, 0.065), (1.0, 0.0)]
 
+
+# Stylized pass: exaggerate the puffiness and a slightly bigger, rounder head.
+THICK = [(s, t * 1.3) for s, t in THICK]
+TOP = [(s, y * (1.1 if s < 0.6 else 1.0)) for s, y in TOP]
+BOT = [(s, y * (1.1 if s < 0.6 else 1.0)) for s, y in BOT]
 
 _GRID = np.linspace(0, 1, 2001)
 _CACHE = {}
@@ -61,7 +67,7 @@ def profile(s):
 def tail_notch(s, ny):
     """Pull the middle of the tail back to form a soft fork."""
     w = np.clip((s - 0.86) / 0.14, 0, 1) ** 2
-    return -0.13 * w * (1 - ny ** 2)
+    return -0.08 * w * (1 - ny ** 2)
 
 
 # ----------------------------------------------------------------- texture
@@ -75,34 +81,25 @@ def pastry_texture(out_dir, bounds):
     ny = (Y - c) / np.maximum(h, 1e-3)
     edge = np.abs(ny)
 
-    gold = np.array(L.srgb("#cc8a3e"))
-    light = np.array(L.srgb("#e4ab5f"))
-    toast = np.array(L.srgb("#94541f"))
-    line_dark = np.array(L.srgb("#94501d"))
-    line_hi = np.array(L.srgb("#f6c983"))
+    gold = np.array(L.srgb("#e3a04f"))
+    light = np.array(L.srgb("#f3c574"))
+    toast = np.array(L.srgb("#b0672a"))
+    line_dark = np.array(L.srgb("#9c4f17"))
+    line_hi = np.array(L.srgb("#ffd88c"))
 
     rgb = np.broadcast_to(gold, (TEX, TEX, 3)).copy()
     puff = np.clip(1 - edge, 0, 1)[..., None] * np.clip(1 - np.abs(s - 0.35) / 0.4, 0, 1)[..., None]
     rgb = rgb + (light - rgb) * puff * 0.7
     rim = np.clip((edge - 0.72) / 0.28, 0, 1)[..., None]
-    rgb = rgb + (toast - rgb) * rim * 0.85
-    # Toasty mottling (low frequency).
-    rng = np.random.default_rng(11)
-    noise = rng.uniform(-1, 1, (TEX, TEX))
-    k = np.ones(41) / 41
-    for _ in range(3):  # repeated box blur ~ Gaussian: soft, blob-free toasting
-        noise = np.apply_along_axis(lambda r: np.convolve(r, k, "same"), 0, noise)
-        noise = np.apply_along_axis(lambda r: np.convolve(r, k, "same"), 1, noise)
-    noise /= np.abs(noise).max()
-    rgb = rgb + (toast - rgb) * np.clip(noise, 0, 1)[..., None] * 0.25
+    rgb = rgb + (toast - rgb) * rim * 0.9
 
     px = (x1 - x0) / TEX  # studs per pixel
-    W = 3.0 * px          # line half-width
+    W = 5.0 * px          # line half-width
 
     def stroke(dist, mask):
         """Embossed groove: dark line with a light edge just below/right."""
         m = (np.abs(dist) < W) & mask
-        hi = (dist > W) & (dist < W * 2.4) & mask
+        hi = (dist > W) & (dist < W * 2.0) & mask
         rgb[hi] = rgb[hi] * 0.4 + line_hi * 0.6
         rgb[m] = line_dark
 
@@ -112,12 +109,12 @@ def pastry_texture(out_dir, bounds):
     r = np.hypot(sx - gc[0], (Y - c) - gc[1])
     stroke(r - 0.26, (sx > gc[0] + 0.1) & (edge < 0.85))
     # Scales: three offset rows of big scallops.
-    for row, nyc in enumerate((0.45, 0.0, -0.45)):
-        for col in range(3):
-            cx = (0.40 + col * 0.11 + (0.055 if row == 1 else 0)) * LENGTH
+    for row, nyc in enumerate((0.5, 0.0, -0.5)):
+        for col in range(2):
+            cx = (0.42 + col * 0.14 + (0.07 if row == 1 else 0)) * LENGTH
             cy = c + nyc * h
             rr = np.hypot(sx - cx, Y - cy)
-            stroke(rr - 0.1, (sx > cx) & (edge < 0.82) & (s < 0.7))
+            stroke(rr - 0.13, (sx > cx) & (edge < 0.82) & (s < 0.7))
     # Tail rays.
     for t in (-0.6, -0.2, 0.2, 0.6):
         dist = (Y - c) - t * h * np.clip((s - 0.74) / 0.26, 0, 1) * 0.9
@@ -129,8 +126,8 @@ def pastry_texture(out_dir, bounds):
     # Eye: embossed ring with a dark pupil.
     ex, ey = 0.12 * LENGTH, 0.0
     er = np.hypot(sx - ex, (Y - c) - (0.28 * h + ey))
-    stroke(er - 0.055, np.ones_like(er, bool))
-    rgb[er < 0.028] = np.array(L.srgb("#6b3f1d"))
+    stroke(er - 0.075, np.ones_like(er, bool))
+    rgb[er < 0.042] = np.array(L.srgb("#6b3f1d"))
     # Smile.
     mr = np.hypot(sx - 0.0 * LENGTH, (Y - c) + 0.02)
     stroke(mr - 0.09, (sx > 0.04) & (sx < 0.1) & ((Y - c) < -0.02) & ((Y - c) > -0.09))
@@ -172,7 +169,7 @@ def build_body(mat):
 def build(out_dir):
     ymax = max(y for _, y in TOP) * 1.06
     bounds = (-LENGTH / 2 - 0.02, LENGTH / 2 + 0.02, -ymax, ymax)
-    mat = L.make_material("Taiyaki_Pastry", pastry_texture(out_dir, bounds), roughness=0.6, specular=0.4)
+    mat = L.make_material("Taiyaki_Pastry", pastry_texture(out_dir, bounds), roughness=0.7, specular=0.25)
     body = build_body(mat)
     L.planar_uv(body, 0, 1, bounds)
     return [body]

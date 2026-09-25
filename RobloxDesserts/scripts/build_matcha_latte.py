@@ -1,4 +1,6 @@
-"""Matcha Latte: rounded ceramic cup on a pastel saucer, matcha with a foam heart."""
+"""Matcha Latte: rounded ceramic cup on a pastel saucer, matcha with a foam heart.
+
+Stylized Roblox pass: chunky lip/handle/saucer, one bold band, big heart, matte colours."""
 import math
 import os
 import sys
@@ -10,17 +12,17 @@ import numpy as np  # noqa: E402
 
 NAME = "MatchaLatte"
 SEG = 48                 # radial segments for lathed parts
-SAUCER_TOP = 0.075       # z of the saucer's inner floor, where the cup sits
+SAUCER_TOP = 0.09        # z of the saucer's inner floor, where the cup sits
 
 # Lathe profiles (radius, z), traced outer bottom -> rim -> inner bottom.
-CUP_OUTER = [(0.0, 0.0), (0.22, 0.0), (0.26, 0.015), (0.31, 0.09), (0.37, 0.24), (0.405, 0.4),
-             (0.415, 0.54), (0.41, 0.66), (0.40, 0.73)]
-CUP_RIM = [(0.393, 0.752), (0.378, 0.758), (0.365, 0.745)]
-CUP_INNER = [(0.36, 0.7), (0.365, 0.56), (0.35, 0.4), (0.31, 0.25), (0.24, 0.13), (0.0, 0.11)]
-SAUCER = [(0.0, 0.0), (0.26, 0.0), (0.28, 0.025), (0.34, 0.035), (0.56, 0.06), (0.68, 0.1),
-          (0.715, 0.13), (0.705, 0.145), (0.665, 0.125), (0.55, 0.09), (0.36, SAUCER_TOP),
+CUP_OUTER = [(0.0, 0.0), (0.24, 0.0), (0.28, 0.02), (0.34, 0.1), (0.40, 0.24), (0.435, 0.4),
+             (0.445, 0.54), (0.44, 0.65), (0.43, 0.72)]
+CUP_RIM = [(0.425, 0.75), (0.405, 0.775), (0.375, 0.775), (0.352, 0.752)]   # chunky rolled lip
+CUP_INNER = [(0.348, 0.7), (0.352, 0.56), (0.335, 0.4), (0.29, 0.25), (0.22, 0.14), (0.0, 0.12)]
+SAUCER = [(0.0, 0.0), (0.28, 0.0), (0.30, 0.03), (0.36, 0.045), (0.58, 0.07), (0.70, 0.11),
+          (0.745, 0.15), (0.735, 0.178), (0.69, 0.162), (0.57, 0.118), (0.38, SAUCER_TOP),
           (0.0, SAUCER_TOP)]
-LIQUID_Z = 0.68
+LIQUID_Z = 0.725
 
 
 def lathe(name, profile, mat, z0=0.0, segments=SEG):
@@ -43,8 +45,8 @@ def build_handle(mat, z0):
     """Chunky D-shaped loop whose ends sink into the cup wall."""
     bm = bmesh.new()
     steps, ring_n = 18, 10
-    zc, hz, w = 0.44, 0.17, 0.2
-    a_n, a_b = 0.036, 0.055           # tube half-size: across the loop / along Y
+    zc, hz, w = 0.44, 0.16, 0.21
+    a_n, a_b = 0.05, 0.075           # tube half-size: across the loop / along Y
     path = []
     for i in range(steps + 1):
         t = -math.pi / 2 + math.pi * i / steps
@@ -75,20 +77,20 @@ def foam_texture(out_dir):
     u = (np.arange(n) + 0.5) / n * 2 - 1
     X, Y = np.meshgrid(u, u)
     r = np.hypot(X, Y)
-    matcha = np.array(L.srgb("#9fc46a"))
-    matcha_light = np.array(L.srgb("#bcd88d"))
-    foam = np.array(L.srgb("#fbf6e9"))
+    matcha = np.array(L.srgb("#96c866"))
+    matcha_light = np.array(L.srgb("#b8dc92"))
+    foam = np.array(L.srgb("#fffaf0"))
     rgb = np.broadcast_to(matcha, (n, n, 3)).copy()
     # Lighter microfoam ring near the cup wall.
     ring = np.clip((r - 0.8) / 0.12, 0, 1)[..., None]
-    rgb = rgb + (np.array(L.srgb("#e6eccb")) - rgb) * ring
+    rgb = rgb + (np.array(L.srgb("#eef6d6")) - rgb) * ring
     rgb = rgb + (matcha_light - rgb) * np.clip((r - 0.62) / 0.2, 0, 1)[..., None] * (1 - ring) * 0.6
     # Latte-art heart (implicit curve), point toward -Y (towards the viewer).
-    hx, hy = X / 0.5, (Y - 0.08) / 0.5
+    hx, hy = X / 0.58, (Y - 0.1) / 0.58
     heart = (hx ** 2 + hy ** 2 - 1) ** 3 - hx ** 2 * hy ** 3 <= 0
     rgb[heart] = foam
     # Pulled-through stem line typical of a poured heart.
-    stem = (np.abs(X) < 0.022 * (1 + Y)) & (Y < -0.3) & (Y > -0.78)
+    stem = (np.abs(X) < 0.04 * (1 + Y)) & (Y < -0.3) & (Y > -0.8)
     rgb[stem] = foam
     rgb = rgb.reshape(n // 2, 2, n // 2, 2, 3).mean(axis=(1, 3))
     return L.image_from_array("Matcha_Foam_Color", rgb, out_dir)
@@ -98,9 +100,9 @@ def cup_texture(out_dir):
     """Vertical strip mapped by height: cream glaze with a pastel pink band."""
     h = 128
     z = (np.arange(h) + 0.5) / h
-    cream = np.array(L.srgb("#f7efe3"))
-    pink = np.array(L.srgb("#f2b8c3"))
-    band = ((z > 0.72) & (z < 0.8)) | ((z > 0.83) & (z < 0.85))
+    cream = np.array(L.srgb("#fff6ea"))
+    pink = np.array(L.srgb("#ff9fb8"))
+    band = (z > 0.64) & (z < 0.8)   # one bold band, readable at distance
     rgb = np.where(band[:, None], pink, cream)[:, None, :].repeat(8, axis=1)
     return L.image_from_array("Cup_Color", rgb, out_dir)
 
@@ -131,10 +133,10 @@ def build_foam(mat, z0):
 
 def build(out_dir):
     cup_mat = L.make_material("Cup_Ceramic", cup_texture(out_dir),
-                              roughness=0.25, specular=0.5, clearcoat=0.4)
-    saucer_mat = L.make_material("Saucer_Ceramic", L.solid_image("Saucer_Color", "#f2c4cc", out_dir),
-                                 roughness=0.25, specular=0.5, clearcoat=0.4)
-    foam_mat = L.make_material("Matcha_Foam", foam_texture(out_dir), roughness=0.55, specular=0.3)
+                              roughness=0.5, specular=0.3)
+    saucer_mat = L.make_material("Saucer_Ceramic", L.solid_image("Saucer_Color", "#ffb0c3", out_dir),
+                                 roughness=0.5, specular=0.3)
+    foam_mat = L.make_material("Matcha_Foam", foam_texture(out_dir), roughness=0.7, specular=0.25)
 
     saucer = lathe("Saucer", SAUCER, saucer_mat)
     cup = lathe("Cup", CUP_OUTER + CUP_RIM + CUP_INNER, cup_mat, z0=SAUCER_TOP)

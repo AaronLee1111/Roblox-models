@@ -8,14 +8,27 @@ so it can be tweaked and rebuilt.
 
 | Asset | Triangles | Size in studs (W × D × H) | Materials | Files |
 |---|---|---|---|---|
-| StrawberryDaifuku | 1,760 | 1.10 × 1.10 × 1.02 | 3: Mochi, Strawberry, Leaf | `.glb`, `.fbx` |
-| Dango | 1,908 | 2.33 × 0.60 × 0.51 | 4: Dango_Pink, Dango_White, Dango_Green, Skewer_Wood | `.glb`, `.fbx` |
-| Taiyaki | 3,488 | 1.70 × 0.90 × 0.36 | 1: Taiyaki_Pastry | `.glb`, `.fbx` |
-| MatchaLatte | 3,384 | 1.43 × 1.43 × 0.83 | 3: Cup_Ceramic, Saucer_Ceramic, Matcha_Foam | `.glb`, `.fbx` |
+| StrawberryDaifuku | 2,104 | 1.10 × 1.10 × 1.14 | 3: Mochi, Strawberry, Leaf | `.glb`, `.fbx` |
+| Dango | 1,908 | 2.42 × 0.68 × 0.57 | 4: Dango_Pink, Dango_White, Dango_Green, Skewer_Wood | `.glb`, `.fbx` |
+| Taiyaki | 3,488 | 1.70 × 0.97 × 0.46 | 1: Taiyaki_Pastry | `.glb`, `.fbx` |
+| MatchaLatte | 3,480 | 1.49 × 1.49 × 0.87 | 3: Cup_Ceramic, Saucer_Ceramic, Matcha_Foam | `.glb`, `.fbx` |
 
 Each folder has the `.glb`, the `.fbx` (textures embedded), preview renders,
 the source textures in `textures/`, and a `REPORT.md` with the re-import
 validation results.
+
+## Style
+
+This is a stylized Roblox look, not a product render:
+
+- Exaggerated, chunky proportions: a big strawberry, fat dango, puffy taiyaki,
+  and a rolled cup lip, handle and saucer.
+- Flat, matte colours with no clearcoat. Textures are flat, with no noise or
+  baked gradients. The pastels are slightly saturated but stay soft.
+- Only bold detail that reads a few studs away: large seeds, a solid powder
+  cap, thick grooves on the taiyaki, one wide cup band and a big foam heart.
+- Previews render with Blender's Standard colour transform and soft, even
+  lighting, so they're closer to how the textures look in Roblox.
 
 ## Conventions
 

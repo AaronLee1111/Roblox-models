@@ -1,4 +1,6 @@
-"""Hanami Dango: pink, white and green mochi balls on a wooden skewer."""
+"""Hanami Dango: pink, white and green mochi balls on a wooden skewer.
+
+Stylized Roblox pass: chunkier balls and skewer, flat saturated pastels."""
 import math
 import os
 import sys
@@ -9,19 +11,12 @@ import bmesh  # noqa: E402
 import numpy as np  # noqa: E402
 
 NAME = "Dango"
-BALL_R = 0.3
-SPACING = 0.5            # centre-to-centre, slightly less than a diameter so balls press together
-SKEWER_R = 0.06
-BALLS = [("Dango_Pink", "#f497b3"), ("Dango_White", "#fbf4ea"), ("Dango_Green", "#9ccf7e")]
+BALL_R = 0.34
+SPACING = 0.56           # centre-to-centre, slightly less than a diameter so balls press together
+SKEWER_R = 0.08
+BALLS = [("Dango_Pink", "#ff9cbd"), ("Dango_White", "#fff5e6"), ("Dango_Green", "#8fd38a")]
 
 
-def gradient_texture(name, hex_color, out_dir):
-    """Soft top-to-bottom shading baked into the colour so it reads in flat Roblox lighting."""
-    h, w = 64, 16
-    c = np.array(L.srgb(hex_color))
-    v = np.linspace(0, 1, h)[:, None, None]
-    rgb = c * (0.9 + 0.1 * v) + (1 - c) * 0.08 * v
-    return L.image_from_array(name, np.broadcast_to(rgb, (h, w, 3)).copy(), out_dir)
 
 
 def build_ball(mat, x, seed):
@@ -30,10 +25,10 @@ def build_ball(mat, x, seed):
     wob = rng.uniform(-1, 1, 3)
     for vert in bm.verts:
         co = vert.co
-        co.x *= 0.9                     # pressed against neighbours
+        co.x *= 0.88                    # pressed against neighbours
         # Gentle hand-rolled irregularity (low frequency so the silhouette stays clean).
         n = co.normalized()
-        co += n * BALL_R * 0.06 * (wob[0] * n.x * n.y + wob[1] * n.z * n.x + wob[2] * (n.z ** 2 - 0.3))
+        co += n * BALL_R * 0.03 * (wob[0] * n.x * n.y + wob[1] * n.z * n.x + wob[2] * (n.z ** 2 - 0.3))
         # Soft sag: flatter bottom, sitting on the table.
         co.z *= 0.94
         if co.z < -BALL_R * 0.62:
@@ -53,8 +48,8 @@ def build_skewer(mat, x0, x1):
                           depth=length)
     # Sharpen the far end into a point.
     tip = [v for v in bm.verts if v.co.z > 0]
-    bmesh.ops.scale(bm, vec=(0.35, 0.35, 1), verts=tip)
-    bmesh.ops.translate(bm, vec=(0, 0, 0.06), verts=tip)
+    bmesh.ops.scale(bm, vec=(0.5, 0.5, 1), verts=tip)
+    bmesh.ops.translate(bm, vec=(0, 0, 0.05), verts=tip)
     obj = L.obj_from_bm("Skewer", bm, mat)
     obj.rotation_euler = (0, math.radians(90), 0)
     obj.location = ((x0 + x1) / 2, 0, 0)
@@ -65,11 +60,12 @@ def build(out_dir):
     parts = []
     xs = [(i - 1) * SPACING for i in range(3)]
     for i, ((name, color), x) in enumerate(zip(BALLS, xs)):
-        mat = L.make_material(name, gradient_texture(f"{name}_Color", color, out_dir),
-                              roughness=0.28, specular=0.6, clearcoat=0.35)
+        mat = L.make_material(name, L.solid_image(f"{name}_Color", color, out_dir),
+                              roughness=0.45, specular=0.3)
         parts.append(build_ball(mat, x, seed=i + 3))
-    wood = L.make_material("Skewer_Wood", L.solid_image("Skewer_Color", "#d8b384", out_dir), roughness=0.8)
-    parts.append(build_skewer(wood, xs[0] - 0.85, xs[-1] + 0.42))
+    wood = L.make_material("Skewer_Wood", L.solid_image("Skewer_Color", "#e0ae72", out_dir),
+                          roughness=0.8, specular=0.2)
+    parts.append(build_skewer(wood, xs[0] - 0.8, xs[-1] + 0.45))
     return parts
 
 

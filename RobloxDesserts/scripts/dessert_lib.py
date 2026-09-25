@@ -218,14 +218,15 @@ def render_preview(obj, out_path, cam_dir=(1.0, -1.1, 0.75), lens=55, samples=64
     scene.cycles.samples = samples
     scene.cycles.use_denoising = True
     scene.render.resolution_x = scene.render.resolution_y = size
-    scene.view_settings.view_transform = "AgX"
-    scene.view_settings.look = "AgX - Medium High Contrast"
+    # Standard transform shows texture colours as authored (closer to Roblox than AgX).
+    scene.view_settings.view_transform = "Standard"
+    scene.view_settings.look = "None"
 
     world = bpy.data.worlds.new("World")
     world.use_nodes = True
     bgn = world.node_tree.nodes["Background"]
     bgn.inputs["Color"].default_value = (*[c ** 2.2 for c in srgb(bg)], 1)
-    bgn.inputs["Strength"].default_value = 1.0
+    bgn.inputs["Strength"].default_value = 0.8
     scene.world = world
 
     dims = obj.dimensions
@@ -233,14 +234,14 @@ def render_preview(obj, out_path, cam_dir=(1.0, -1.1, 0.75), lens=55, samples=64
     center = Vector((0, 0, dims.z * 0.45))
 
     key = bpy.data.objects.new("Key", bpy.data.lights.new("Key", "AREA"))
-    key.data.energy = 250 * radius ** 2
+    key.data.energy = 120 * radius ** 2
     key.data.size = radius * 4
     key.location = center + Vector((-2.5, -2.5, 3.5)) * radius
     key.rotation_euler = (center - key.location).to_track_quat("-Z", "Y").to_euler()
     scene.collection.objects.link(key)
     sun = bpy.data.objects.new("Sun", bpy.data.lights.new("Sun", "SUN"))
-    sun.data.energy = 1.8
-    sun.data.angle = math.radians(12)
+    sun.data.energy = 1.6
+    sun.data.angle = math.radians(25)
     sun.rotation_euler = (math.radians(35), math.radians(-20), math.radians(-30))
     scene.collection.objects.link(sun)
 
