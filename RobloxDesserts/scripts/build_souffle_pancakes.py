@@ -92,6 +92,30 @@ def build_syrup(mat):
     return parts
 
 
+OFFSETS = [(0.0, 0.0, 0.0), (0.03, -0.02, 0.05), (-0.02, 0.03, -0.04)]
+
+
+def build_plate(mat):
+    """The café plate shared by the whole pancake family."""
+    return P.lathe("Plate", [(0.0, 0.0), (0.42, 0.0), (0.45, 0.025), (0.5, 0.035), (0.7, 0.055),
+                             (0.76, 0.1), (0.765, 0.12), (0.735, 0.12), (0.68, 0.085),
+                             (0.5, PLATE_TOP), (0.0, PLATE_TOP)], mat, segments=40)
+
+
+def build_stack(top_mat, side_mat, count=3):
+    """Slightly offset stack of puffy pancakes. Returns (parts, z of the top pancake's base).
+    Toppings are placed relative to the top pancake, then moved by OFFSETS[count-1] and that z."""
+    parts = []
+    z = PLATE_TOP - 0.01
+    for i, (dx, dy, rz) in enumerate(OFFSETS[:count]):
+        pc = build_pancake(top_mat, side_mat)
+        P.move([pc], dx=dx, dy=dy, dz=z, rot_z=rz)
+        parts.append(pc)
+        if i < count - 1:
+            z += PH - SQUASH
+    return parts, z
+
+
 def build(out_dir):
     top_mat = L.make_material("PancakeGolden", L.solid_image("PancakeGolden_Color", "#e8a24e", out_dir),
                               roughness=0.75, specular=0.2)
@@ -107,18 +131,9 @@ def build(out_dir):
     leaf = L.make_material("Leaf", L.solid_image("Leaf_Color", "#5ccb5f", out_dir),
                            roughness=0.75, specular=0.25)
 
-    parts = [P.lathe("Plate", [(0.0, 0.0), (0.42, 0.0), (0.45, 0.025), (0.5, 0.035), (0.7, 0.055),
-                               (0.76, 0.1), (0.765, 0.12), (0.735, 0.12), (0.68, 0.085),
-                               (0.5, PLATE_TOP), (0.0, PLATE_TOP)], plate, segments=40)]
-
-    offsets = [(0.0, 0.0, 0.0), (0.03, -0.02, 0.05), (-0.02, 0.03, -0.04)]
-    z = PLATE_TOP - 0.01
-    for i, (dx, dy, rz) in enumerate(offsets):
-        pc = build_pancake(top_mat, side_mat)
-        P.move([pc], dx=dx, dy=dy, dz=z, rot_z=rz)
-        parts.append(pc)
-        if i < len(offsets) - 1:
-            z += PH - SQUASH
+    parts = [build_plate(plate)]
+    stack, z = build_stack(top_mat, side_mat)
+    parts += stack
 
     # Toppings, placed relative to the top pancake.
     top = []
@@ -129,7 +144,7 @@ def build(out_dir):
     sb = P.strawberry(berry, leaf, radius=0.15)
     P.move(sb, dx=0.17, dy=0.1, dz=PH - 0.02, tilt=(math.radians(10), math.radians(16)))
     top += sb
-    dx, dy, rz = offsets[-1]
+    dx, dy, rz = OFFSETS[-1]
     P.move(top, dx=dx, dy=dy, dz=z, rot_z=rz)
     parts += top
     return parts
