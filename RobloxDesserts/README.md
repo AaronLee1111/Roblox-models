@@ -21,7 +21,7 @@ so it can be tweaked and rebuilt.
 | Croffle | 3,430 | 1.35 × 0.80 × 0.53 | 4: CroffleWaffle, CroffleLayers, Cream, Blueberry | `.glb`, `.fbx` |
 | MangoBingsu | 5,408 | 1.36 × 1.36 × 1.58 | 5: Bowl, ShavedIce, Mango, MangoScoop, Mint | `.glb`, `.fbx` |
 | StrawberryBingsu | 6,888 | 1.36 × 1.36 × 1.90 | 6: Bowl, ShavedIce, Strawberry, StrawberryCut, StrawberryScoop, Leaf | `.glb`, `.fbx` |
-| AfternoonTeaSet | 9,920 | 2.72 × 1.41 × 1.53 | 5: Porcelain, Gold, PastelCeramic, Pastries, Tea | `.glb`, `.fbx` |
+| AfternoonTeaSet | 9,880 | 2.72 × 1.41 × 1.53 | 5: Porcelain, Gold, PastelCeramic, Pastries, Tea | `.glb`, `.fbx` |
 | FruitTart | 5,180 | 1.15 × 1.14 × 0.35 | 6: TartCrust, Custard, FruitSlices, Strawberry, StrawberryCut, Blueberry | `.glb`, `.fbx` |
 | Macaron | 4,928 | 1.56 × 1.07 × 0.97 | 3: ShellPink, ShellLavender, Filling | `.glb`, `.fbx` |
 | CremeBrulee | 2,628 | 1.28 × 1.15 × 0.33 | 6: Ramekin, CaramelTop, Strawberry, StrawberryCut, Mint, Spoon | `.glb`, `.fbx` |

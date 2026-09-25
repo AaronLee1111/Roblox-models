@@ -275,15 +275,28 @@ def tube(name, path, radii, mat, ring_n=10, closed=False, caps=False):
     closed=True joins the last ring back to the first (seamless loop)."""
     bm = bmesh.new()
     rings = []
-    pts = [Vector(p) for p in path]
+    pts, rr = [], []
+    for p, r in zip(path, radii):                # drop consecutive duplicates (zero tangents)
+        if not pts or (Vector(p) - pts[-1]).length > 1e-7:
+            pts.append(Vector(p))
+            rr.append(r)
+    radii = rr
+    # Rotation-minimising (parallel-transport) frames: the ring never twists or
+    # flips, whatever direction the path runs (planar loops close seamlessly).
+    nx = None
+    prev_tan = None
     for i, p in enumerate(pts):
         if closed:
             tan = (pts[(i + 1) % len(pts)] - pts[i - 1]).normalized()
         else:
             tan = (pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized()
-        # All tubes here lie in vertical XZ planes: a fixed Y reference never flips.
-        ref = Vector((0, 1, 0)) if abs(tan.y) < 0.9 else Vector((1, 0, 0))
-        nx = tan.cross(ref).normalized()
+        if nx is None:
+            ref = Vector((0, 0, 1)) if abs(tan.z) < 0.9 else Vector((1, 0, 0))
+            nx = tan.cross(ref).normalized()
+        else:
+            nx = prev_tan.rotation_difference(tan) @ nx
+            nx = (nx - tan * nx.dot(tan)).normalized()
+        prev_tan = tan
         ny = tan.cross(nx).normalized()
         r = radii[i]
         rings.append([bm.verts.new(p + (nx * math.cos(a) + ny * math.sin(a)) * r)
